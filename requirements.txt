@@ -1,0 +1,10 @@
+Flask==2.3.2
+python-dotenv==1.0.1
+pymongo==4.6.1
+requests==2.31.0
+flasgger==0.9.7.1
+PyJWT==2.8.0
+pytz
+flask_cors
+pydantic
+apscheduler
