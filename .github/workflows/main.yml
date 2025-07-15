@@ -1,0 +1,170 @@
+name: Deploy to Amazon ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      ecs_serviceName:
+        description: "ECS Service Name "
+        required: true
+      account_userName:
+        description: "username for the account to complete the setup"
+        required: true
+
+env:
+  AWS_REGION: us-west-1
+  ECR_REPOSITORY: python-trading-image_new
+  ECS_CLUSTER: trading_demo_AWS
+  ECS_SERVICE: ${{ inputs.ecs_serviceName }}
+  TASK_FAMILY: trading_demo
+  EXECUTION_ROLE_ARN: arn:aws:iam::609416176497:role/ecsTaskExecutionRole
+  SUBNET_1: subnet-0784e739d9ce88acb
+  SUBNET_2: subnet-066b037ae7758fd0e
+  SECURITY_GROUP: sg-08017ab8d6197f916
+  SERVICE_NAME: ${{ inputs.ecs_serviceName }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push Docker image
+        env:
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          IMAGE_TAG=latest
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Register ECS task definition with logging
+        env:
+          TASK_FAMILY: ${{ env.TASK_FAMILY }}
+          EXECUTION_ROLE_ARN: ${{ env.EXECUTION_ROLE_ARN }}
+          IMAGE_URI: ${{ env.IMAGE_URI }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          TASK_DEF=$(cat <<EOF
+          {
+            "family": "$TASK_FAMILY",
+            "networkMode": "awsvpc",
+            "requiresCompatibilities": ["FARGATE"],
+            "cpu": "256",
+            "memory": "512",
+            "executionRoleArn": "$EXECUTION_ROLE_ARN",
+            "containerDefinitions": [
+              {
+                "name": "app",
+                "image": "$IMAGE_URI",
+                "essential": true,
+                "portMappings": [
+                  {
+                    "containerPort": 80,
+                    "protocol": "tcp"
+                  }
+                ],
+                "environment": [
+                  {
+                    "name": "MONGO_URI",
+                    "value": "${{ secrets.MONGO_URI }}"
+                  },
+                  {
+                    "name": "MONGO_DB",
+                    "value": "${{ secrets.MONGO_DB }}"
+                  },
+                                    {
+                    "name": "CONTAINER_USERNAME",
+                    "value": "${{ inputs.account_userName }}"
+                  }
+                ],
+                "logConfiguration": {
+                  "logDriver": "awslogs",
+                  "options": {
+                    "awslogs-group": "/ecs/$SERVICE_NAME",
+                    "awslogs-create-group": "true",
+                    "awslogs-region": "$AWS_REGION",
+                    "awslogs-stream-prefix": "ecs"
+                  }
+                }
+              }
+            ]
+          }
+          EOF
+          )
+          echo "$TASK_DEF" > task-def.json
+
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "TASK_DEF_ARN=$TASK_DEF_ARN" >> $GITHUB_ENV
+
+      - name: Check if ECS service exists
+        id: check-service
+        env:
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          ECS_CLUSTER: ${{ env.ECS_CLUSTER }}
+        run: |
+          SERVICE_EXISTS=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$SERVICE_NAME" \
+            --output json | jq -r '.services | length')
+
+          echo "SERVICE_EXISTS=$SERVICE_EXISTS"
+
+          if [ "$SERVICE_EXISTS" -eq 0 ]; then
+            echo "service_does_not_exist=true" >> $GITHUB_ENV
+          else
+            echo "service_does_not_exist=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create ECS service if not exists
+        if: env.service_does_not_exist == 'true'
+        env:
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          ECS_CLUSTER: ${{ env.ECS_CLUSTER }}
+          TASK_DEF_ARN: ${{ env.TASK_DEF_ARN }}
+          SUBNET_1: ${{ env.SUBNET_1 }}
+          SUBNET_2: ${{ env.SUBNET_2 }}
+          SECURITY_GROUP: ${{ env.SECURITY_GROUP }}
+        run: |
+          echo "Creating ECS service $SERVICE_NAME..."
+          aws ecs create-service \
+            --cluster "$ECS_CLUSTER" \
+            --service-name "$SERVICE_NAME" \
+            --task-definition "$TASK_DEF_ARN" \
+            --desired-count 1 \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}"
+
+      - name: Update ECS service if it exists
+        if: env.service_does_not_exist == 'false'
+        env:
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          ECS_CLUSTER: ${{ env.ECS_CLUSTER }}
+          TASK_DEF_ARN: ${{ env.TASK_DEF_ARN }}
+        run: |
+          echo "Updating ECS service $SERVICE_NAME..."
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$SERVICE_NAME" \
+            --task-definition "$TASK_DEF_ARN" \
+            --force-new-deployment
