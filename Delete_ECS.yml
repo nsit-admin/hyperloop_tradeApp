@@ -1,0 +1,47 @@
+name: Delete ECS Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      ecs_serviceName:
+        description: 'ECS Service Name'
+        required: true
+
+env:
+  AWS_REGION: us-west-1
+  ECR_REPOSITORY: python-trading-image_new
+  ECS_CLUSTER: trading_demo_AWS
+  ECS_SERVICE: ${{ inputs.ecs_serviceName }}
+  TASK_FAMILY: trading_demo
+  EXECUTION_ROLE_ARN: arn:aws:iam::609416176497:role/ecsTaskExecutionRole
+  SUBNET_1: subnet-0784e739d9ce88acb
+  SUBNET_2: subnet-066b037ae7758fd0e
+  SECURITY_GROUP: sg-08017ab8d6197f916
+  SERVICE_NAME: ${{ inputs.ecs_serviceName }}
+
+jobs:
+  delete-ecs-service:
+    name: Delete ECS Service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1  # Change if your ECS cluster is in another region
+
+      - name: Delete ECS Service
+        run: |
+          echo "Attempting to delete ECS service '${{ github.event.inputs.service_name }}' from cluster '${{ github.event.inputs.cluster_name }}'"
+
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ env.SERVICE_NAME }}" \
+            --desired-count 0
+
+          aws ecs delete-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ env.SERVICE_NAME }}" \
+            --force
