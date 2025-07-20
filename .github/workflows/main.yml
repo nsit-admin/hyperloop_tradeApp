@@ -3,10 +3,7 @@ name: Deploy to Amazon ECS
 on:
   workflow_dispatch:
     inputs:
-      ecs_serviceName:
-        description: "ECS Service Name "
-        required: true
-      account_userName:
+      account_username:
         description: "username for the account to complete the setup"
         required: true
 
@@ -14,13 +11,13 @@ env:
   AWS_REGION: us-west-1
   ECR_REPOSITORY: python-trading-image_new
   ECS_CLUSTER: trading_demo_AWS
-  ECS_SERVICE: ${{ inputs.ecs_serviceName }}
+  ECS_SERVICE: ${{ inputs.account_username }}
   TASK_FAMILY: trading_demo
   EXECUTION_ROLE_ARN: arn:aws:iam::609416176497:role/ecsTaskExecutionRole
   SUBNET_1: subnet-0784e739d9ce88acb
   SUBNET_2: subnet-066b037ae7758fd0e
   SECURITY_GROUP: sg-08017ab8d6197f916
-  SERVICE_NAME: ${{ inputs.ecs_serviceName }}
+  SERVICE_NAME: ${{ inputs.account_username }}
 
 jobs:
   deploy:
