@@ -22,7 +22,7 @@ env:
 
 
 jobs:
-  suspend-service:
+  resume-service:
     runs-on: ubuntu-latest
     name: Resume ECS Service
 
