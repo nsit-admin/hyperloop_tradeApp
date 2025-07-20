@@ -1,4 +1,4 @@
-name: Suspend ECS Service
+name: Resume ECS Service
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ env:
 jobs:
   suspend-service:
     runs-on: ubuntu-latest
-    name: Suspend ECS Service
+    name: Resume ECS Service
 
     steps:
       - name: Configure AWS credentials
@@ -36,11 +36,11 @@ jobs:
 
       - name: Set desired count to 1 (resume)
         run: |
-          echo "Suspending ECS service '${{ github.event.inputs.service_name }}' on cluster '${{ github.event.inputs.cluster_name }}'..."
+          echo "Resume ECS service '${{ github.event.inputs.service_name }}' on cluster '${{ github.event.inputs.cluster_name }}'..."
           
           aws ecs update-service \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --service "${{ env.SERVICE_NAME }}" \
             --desired-count 1
 
-          echo "Service suspended (desired count = 0)."
+          echo "Service Resume (desired count = 1)."
