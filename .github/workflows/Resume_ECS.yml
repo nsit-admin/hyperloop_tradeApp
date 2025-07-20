@@ -1,0 +1,37 @@
+stages:
+  - deploy
+
+resume_ecs_service:
+  stage: deploy
+  image: amazon/aws-cli:2.15.4
+  script:
+    - echo "Resuming ECS service: $SERVICE_NAME on cluster: $CLUSTER_NAME"
+
+    # Configure AWS CLI
+    - aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+    - aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+    - aws configure set default.region "$AWS_REGION"
+
+    # Get current service status
+    - export STATUS=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME" --query 'services[0].status' --output text || echo "MISSING")
+
+    - |
+      if [ "$STATUS" == "ACTIVE" ]; then
+        echo "✅ Service is ACTIVE. Updating desired count to 1..."
+        aws ecs update-service \
+          --cluster "$CLUSTER_NAME" \
+          --service "$SERVICE_NAME" \
+          --desired-count 1
+      elif [ "$STATUS" == "MISSING" ]; then
+        echo "❌ ECS service not found."
+        exit 1
+      else
+        echo "⚠️ Service is not ACTIVE (status: $STATUS). Skipping update."
+        exit 1
+      fi
+
+  only:
+    - main  # or the branch you want this to run on
+
+  variables:
+    AWS_REGION: "us-west-1"  # change to your region
