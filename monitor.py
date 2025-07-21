@@ -28,7 +28,7 @@ def send_teams_alert(
 ):
     logging.info(f"{model_name}: {message}")
 
-    api_url = os.getenv("NOTIFICATION_API_URL", "http://127.0.0.1:5000/api/hyperloop/v1/notifications")
+    api_url = os.getenv("NOTIFICATION_API_URL", "https://hyperloop.neuralschemait.com/api/hyperloop/v1/notifications")
     token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTE2MDg0MTMsInB1cnBvc2UiOiJiYWNrZ3JvdW5kX2pvYiJ9.xo2GOGNoFX2D7dEHB2lpXR3CXw2wvXuL2xFDvarRgpA'
 
     payload = {
@@ -120,6 +120,16 @@ def place_market_order(base_url, token, account_id, instrument, units, side, tak
     prices = price_response.json().get('prices', [])[0]
     ask = float(prices['asks'][0]['price'])
     bid = float(prices['bids'][0]['price'])
+    # --- Stop Loss Logic ---
+    stop_loss_price = None
+    stop_loss_pips = cfg.get("STOP_LOSS_PIPS")
+    entry_price = ask if side == "BUY" else bid
+
+    if stop_loss_pips:
+        if side == "BUY":
+            stop_loss_price = round(entry_price - (stop_loss_pips * 0.0001), 5)
+        else:
+            stop_loss_price = round(entry_price + (stop_loss_pips * 0.0001), 5)
 
     tp_price = round((ask if side == "BUY" else bid) + (take_profit_pips * 0.0001 if side == "BUY" else -take_profit_pips * 0.0001), 5)
     final_units = units if side == "BUY" else str(-abs(int(units)))
@@ -134,6 +144,10 @@ def place_market_order(base_url, token, account_id, instrument, units, side, tak
             "takeProfitOnFill": {"price": str(tp_price)}
         }
     }
+
+    if stop_loss_price:
+        order_data["order"]["stopLossOnFill"] = {"price": str(stop_loss_price)}
+
     order_url = f"{base_url}accounts/{account_id}/orders"
     r = requests.post(order_url, headers=headers, json=order_data)
     if r.status_code == 201:
@@ -219,4 +233,3 @@ def run_forever():
 if __name__ == "__main__":
     logging.info("✅ Monitor script starting...")
     run_forever()
-
