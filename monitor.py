@@ -42,7 +42,7 @@ def send_teams_alert(
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTE2MDg0MTMsInB1cnBvc2UiOiJiYWNrZ3JvdW5kX2pvYiJ9.xo2GOGNoFX2D7dEHB2lpXR3CXw2wvXuL2xFDvarRgpA"
     }
 
     try:
