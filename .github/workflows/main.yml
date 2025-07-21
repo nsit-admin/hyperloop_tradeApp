@@ -117,7 +117,7 @@ jobs:
                    {
                     "name": "API_BASE_STREAM_LIVE",
                     "value": "${{ secrets.API_BASE_STREAM_LIVE }}"
-                  },
+                  }
                 ],
                 "logConfiguration": {
                   "logDriver": "awslogs",
