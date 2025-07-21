@@ -98,7 +98,7 @@ def place_hedge_order(original_side, original_units, instrument, hedge_id, hedge
     hedge_units = int(abs(original_units) * multiplier)
     hedge_units = -hedge_units if hedge_side == "SELL" else hedge_units
 
-    stop_loss_pips = config.get("STOP_LOSS_PIPS") 
+    stop_loss_pips = config.get("STOP_LOSS_PIPS")
     if stop_loss_pips is None:
         logging.info(f"{model_name}: No STOP_LOSS defined. Proceeding without stop loss.")
 
@@ -175,7 +175,7 @@ def send_teams_alert(
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTE2MDg0MTMsInB1cnBvc2UiOiJiYWNrZ3JvdW5kX2pvYiJ9.xo2GOGNoFX2D7dEHB2lpXR3CXw2wvXuL2xFDvarRgpA"
     }
 
     try:
