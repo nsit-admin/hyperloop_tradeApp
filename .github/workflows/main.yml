@@ -22,6 +22,10 @@ env:
   SECURITY_GROUP: sg-08017ab8d6197f916
   SERVICE_NAME: ${{ inputs.ecs_serviceName }}
   CONTAINER_USERNAME: ${{ inputs.account_username }}
+  API_BASE_URL_LIVE: ${{ secrets.API_BASE_URL_LIVE }}
+  API_BASE_URL: ${{ secrets.API_BASE_URL }}
+  API_BASE_STREAM: ${{ secrets.API_BASE_STREAM }}
+  API_BASE_STREAM_LIVE: ${{ secrets.API_BASE_STREAM_LIVE }}
 
 jobs:
   deploy:
@@ -93,7 +97,27 @@ jobs:
                                     {
                     "name": "CONTAINER_USERNAME",
                     "value": "${{ inputs.account_userName }}"
-                  }
+                  },
+                   {
+                    "name": "MONGO_DB",
+                    "value": "${{ secrets.MONGO_DB }}"
+                  },
+                   {
+                    "name": "API_BASE_URL_LIVE",
+                    "value": "${{ secrets.API_BASE_URL_LIVE }}"
+                  },
+                   {
+                    "name": "API_BASE_URL",
+                    "value": "${{ secrets.API_BASE_URL }}"
+                  },
+                   {
+                    "name": "API_BASE_STREAM",
+                    "value": "${{ secrets.API_BASE_STREAM }}"
+                  },
+                   {
+                    "name": "API_BASE_STREAM_LIVE",
+                    "value": "${{ secrets.API_BASE_STREAM_LIVE }}"
+                  },
                 ],
                 "logConfiguration": {
                   "logDriver": "awslogs",
