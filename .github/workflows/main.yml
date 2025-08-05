@@ -200,6 +200,7 @@ jobs:
             --task-definition "$TASK_DEF_ARN" \
             --desired-count 1 \
             --launch-type FARGATE \
+            --enable-execute-command \
             --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}"
 
       - name: Update ECS service if it exists
