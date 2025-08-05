@@ -17,6 +17,7 @@ env:
   ECS_SERVICE: ${{ inputs.ecs_serviceName }}
   TASK_FAMILY: trading_demo
   EXECUTION_ROLE_ARN: arn:aws:iam::609416176497:role/ecsTaskExecutionRole
+  TASK_ROLE_ARN: arn:aws:iam::609416176497:role/ecsTaskRole  # ✅ NEW
   SUBNET_1: subnet-0784e739d9ce88acb
   SUBNET_2: subnet-066b037ae7758fd0e
   SECURITY_GROUP: sg-08017ab8d6197f916
@@ -84,6 +85,7 @@ jobs:
         env:
           TASK_FAMILY: ${{ env.TASK_FAMILY }}
           EXECUTION_ROLE_ARN: ${{ env.EXECUTION_ROLE_ARN }}
+          TASK_ROLE_ARN: ${{ env.TASK_ROLE_ARN }}
           IMAGE_URI: ${{ env.IMAGE_URI }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           AWS_REGION: ${{ env.AWS_REGION }}
@@ -95,6 +97,7 @@ jobs:
             "requiresCompatibilities": ["FARGATE"],
             "cpu": "256",
             "memory": "512",
+            "taskRoleArn": "$TASK_ROLE_ARN",
             "executionRoleArn": "$EXECUTION_ROLE_ARN",
             "containerDefinitions": [
               {
@@ -116,27 +119,23 @@ jobs:
                     "name": "MONGO_DB",
                     "value": "${{ secrets.MONGO_DB }}"
                   },
-                                    {
+                  {
                     "name": "CONTAINER_USERNAME",
                     "value": "${{ inputs.account_userName }}"
                   },
-                   {
-                    "name": "MONGO_DB",
-                    "value": "${{ secrets.MONGO_DB }}"
-                  },
-                   {
+                  {
                     "name": "API_BASE_URL_LIVE",
                     "value": "${{ secrets.API_BASE_URL_LIVE }}"
                   },
-                   {
+                  {
                     "name": "API_BASE_URL",
                     "value": "${{ secrets.API_BASE_URL }}"
                   },
-                   {
+                  {
                     "name": "API_BASE_STREAM",
                     "value": "${{ secrets.API_BASE_STREAM }}"
                   },
-                   {
+                  {
                     "name": "API_BASE_STREAM_LIVE",
                     "value": "${{ secrets.API_BASE_STREAM_LIVE }}"
                   }
@@ -200,6 +199,7 @@ jobs:
             --task-definition "$TASK_DEF_ARN" \
             --desired-count 1 \
             --launch-type FARGATE \
+            --enable-execute-command \
             --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}"
 
       - name: Update ECS service if it exists
@@ -214,4 +214,5 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --service "$SERVICE_NAME" \
             --task-definition "$TASK_DEF_ARN" \
+            --enable-execute-command \
             --force-new-deployment
